@@ -35,6 +35,7 @@ class Data:
         self.dict_data = {}
         
     def prebuild(self):
+        self.dict_data = {}
         list_file = glob.glob('%s*' % self.src)
         idx_num = 0 
         dict_pic = {}
@@ -54,9 +55,13 @@ class Data:
                     except:
                         logger.error('prebuild error %s [%s] %s' % (f, l, traceback.format_exc()))
                     if len(dict_pic)>=100000:
-                        cPickle.dump(self.dict_data, open(Path(self.cwd, '%s.%s' % (self.pic, idx_num)), 'w+'))
+                        ofn = Path(self.cwd, '%s.%s' % (self.pic, idx_num))
+                        cPickle.dump(dict_pic, open(ofn, 'w+'))
+                        logger.error('data dump %s %s' % (ofn, len(dict_pic)))
                         idx_num += 1
                         dict_pic = {}
+                    if len(self.dict_data)>=500000:
+                        break
             else:
                 for l in csv.reader(open(f)):
                     try:
@@ -74,10 +79,12 @@ class Data:
                     except:
                         logger.error('prebuild error %s [%s] %s' % (f, l, traceback.format_exc()))
                     if len(dict_pic)>=100000:
-                        cPickle.dump(self.dict_data, open(Path(self.cwd, '%s.%s' % (self.pic, idx_num)), 'w+'))
+                        ofn = Path(self.cwd, '%s.%s' % (self.pic, idx_num))
+                        cPickle.dump(dict_pic, open(ofn, 'w+'))
+                        logger.error('data dump %s %s' % (ofn, len(dict_pic)))
                         idx_num += 1
                         dict_pic = {}
-                    if len(self.dict_data)>=1000000:
+                    if len(self.dict_data)>=500000:
                         break
             logger.error('rebuild dict_data %s %s' % (f, len(self.dict_data)))
         
@@ -135,12 +142,13 @@ class DataRank:
                     except:
                         logger.error('rank error %s %s %s %s' % (d, k, v, traceback.format_exc()))
                 if rank:
-                    self.dict_data[k] = v
-                    dict_rank[d] = rank
+                    self.dict_data[d] = rank
+                    dict_rank['%s' % d] = rank
                     if len(dict_rank)<=3:
-                        logger.error('rank load_data test %s\t%s' % (d, rank))
-            cPickle.dump(dict_rank, open('%s.%s' % (self.pic, idx_num), 'w+'))
-            logger.error('rank dump  %s' % len(dict_rank))
+                        logger.debug('rank load_data test %s\t%s' % (d, rank))
+            ofn = Path('%s.%s' % (self.pic, idx_num))
+            cPickle.dump(dict_rank, open(ofn, 'w+'))
+            logger.error('rank dump  %s %s' % (ofn, len(dict_rank)))
             idx_num += 1
         logger.error('rank load_data %s' % len(self.dict_data))
             
