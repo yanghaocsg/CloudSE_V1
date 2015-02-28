@@ -9,7 +9,7 @@ def process(name='SearchServer'):
     p = multiprocessing.Process(target=restart, kwargs={'py':name})
     p.daemon=True
     p.start()
-    
+    p.join()
 def restart(py='SearchServer'):
     str_cmd = 'ps -ef | grep %s' % py
     logger.error('restart cmd %s' % str_cmd)
@@ -18,7 +18,7 @@ def restart(py='SearchServer'):
     for buf in p[0].split('\n'):
         logger.error('restart %s' % buf)
         try:
-            user, pid,_ = re.split('\s+', buf, 2)
+            user, pid, _ = re.split(r'\s+', buf,2)
             pid = int(pid)
             logger.error('kill %s' % pid)
             os.kill(pid, signal.SIGKILL)

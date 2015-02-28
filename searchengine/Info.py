@@ -24,10 +24,15 @@ class Info:
         
     def getInfoById(self, list_id=range(100)):
         list_res = Redis_zero.redis_zero.hmget(self.prefix, list_id[:200])
-        if not list_res:
-            list_res = []
-        logger.error('getInfoById req %s res %s' % (len(list_id), len(list_res)))
-        return [simplejson.loads(l) for l in list_res]
+        list_info = []
+        for l in list_res:
+            try:
+                if l:
+                    list_info.append(simplejson.loads(l))
+            except:
+                logger.error('%s\t%s' % (l, traceback.format_exc()))
+        logger.error('getInfoById req %s res %s info %s' % (len(list_id), len(list_res), len(list_info)))
+        return list_info
     
     def saveInfo(self):
         pipeline_zero = Redis_zero.redis_zero.pipeline()

@@ -60,8 +60,6 @@ class Data:
                         logger.error('data dump %s %s' % (ofn, len(dict_pic)))
                         idx_num += 1
                         dict_pic = {}
-                    if len(self.dict_data)>=500000:
-                        break
             else:
                 for l in csv.reader(open(f)):
                     try:
@@ -84,15 +82,19 @@ class Data:
                         logger.error('data dump %s %s' % (ofn, len(dict_pic)))
                         idx_num += 1
                         dict_pic = {}
-                    if len(self.dict_data)>=500000:
-                        break
             logger.error('rebuild dict_data %s %s' % (f, len(self.dict_data)))
         
+    def backup_data(self):
+        for f in glob.glob('%s*' % self.src):
+            cmd_data = 'mv %s %s.%s' % (f, f, YhTool.today(1))
+            subprocess.call(cmd_data, shell=1)
+            logger.error('cmd_data %s finished' % cmd_data)
+        logger.error('back_updata %s finished' % self.src)
         
     def load_data(self, rebuild=0):
-        if rebuild:
+        try:
             self.prebuild()
-        else:
+        except:
             try:
                 list_file = glob.glob('%s*' % self.pic)
                 logger.error('pic %s list_file %s' % (self.pic,  list_file))
@@ -104,8 +106,8 @@ class Data:
                     raise DataException(['load_data dict_data is zero'])
             except:
                 logger.error('load_data %s' % traceback.format_exc())
-                self.prebuild()
         logger.error('load_data %s' % len(self.dict_data))
+        self.backup_data()
         
     def test(self):
         num_k = 0
@@ -158,12 +160,13 @@ class DataRank:
             logger.error('test %s [%s]' % (k, self.dict_data[k]))
             num_k += 1
             if num_k > 3: break
-            
-data = Data()
-data.load_data()
-datarank = DataRank()
-datarank.load_data()
-
-if __name__=='__main__':
+def run():
+    data = Data()
+    data.load_data()
+    datarank = DataRank()
+    datarank.load_data()
     data.test()
     datarank.test()
+    
+if __name__=='__main__':
+    run()

@@ -17,6 +17,7 @@ import Segmenter
 import YhLog
 from Redis_zero import redis_zero
 import YhBitset
+import Ranker
 
 logger = logging.getLogger(__file__)
 
@@ -130,6 +131,7 @@ class Indexer(object):
                     break
                 bitset = test
         list_docid = bitset.search(200, 1)
+        list_docid = Ranker.Ranker().getRank(name='unigram_rank', list_id=list_docid)
         return list_docid[:200]
     
     def match_fuzzy(self, uni_query='', idx={}):
@@ -148,6 +150,7 @@ class Indexer(object):
             else:
                 logger.error('%s filtered' % s)
         #logger.error('match_title seg %s  len %s ids %s' % ('|'.join(list_s), len(list_docid), list_docid[:3]))
+        list_docid = Ranker.Ranker().getRank(name='unigram_rank', list_id=list_docid)
         return list_docid[:200]
     
     
@@ -157,5 +160,5 @@ indexer = Indexer()
 
 if __name__=='__main__':
     #indexer.build_idx() 
-    indexer.parse_query(u'感冒')
+    logger.error(indexer.parse_query(u'感冒'))
     
