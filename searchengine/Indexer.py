@@ -22,19 +22,22 @@ import Ranker
 logger = logging.getLogger(__file__)
 
 def fun_idx(ifn='', field=[], seg='', ofn=''):
-    dict_data = cPickle.load(open(ifn))
-    dict_kw = defaultdict(set)
-    for k,v in dict_data.iteritems():
-        str_kw = '\t'.join([v[f] for f in field])
-        list_kw = seg(str_kw)
-        for kw in list_kw:
-            dict_kw[kw].add(k)
-    '''
-    for k in dict_kw.keys()[:3]:
-        logger.error('%s\t%s' % (k, dict_kw[k]))
-    '''
-    cPickle.dump(dict_kw, open(ofn, 'w+'))
-    logger.error('idx ifn %s ofn %s dict_kw %s pid %s' %  (ifn, ofn, len(dict_kw), os.getpid()))
+    try:
+        dict_data = cPickle.load(open(ifn))
+        dict_kw = defaultdict(set)
+        for k,v in dict_data.iteritems():
+            str_kw = '\t'.join([v[f] for f in field])
+            list_kw = seg(str_kw)
+            for kw in list_kw:
+                dict_kw[kw].add(k)
+        '''
+        for k in dict_kw.keys()[:3]:
+            logger.error('%s\t%s' % (k, dict_kw[k]))
+        '''
+        cPickle.dump(dict_kw, open(ofn, 'w+'))
+        logger.error('idx ifn %s ofn %s dict_kw %s pid %s' %  (ifn, ofn, len(dict_kw), os.getpid()))
+    except:
+        logger.error('fun_idx error  ifn %s ofn %s pid %s exception %s' %  (ifn, ofn, os.getpid(), traceback.format_exc()))
     return os.getpid()
     
 class Indexer(object):
@@ -59,7 +62,7 @@ class Indexer(object):
         self.pic =self.config.get(head,'pic')
         
     def build_idx(self):
-        pool = Pool(10)
+        pool = Pool(20)
         idx_num = 0
         list_res = []
         for idx in [self.one_idx, self.two_idx, self.three_idx]:
@@ -72,7 +75,7 @@ class Indexer(object):
                 list_res.append(res)
                 idx_num += 1
             for r in list_res:
-                logger.error('idx %s finished' % r.get(600))
+                logger.error('idx %s finished' % r.get(6000))
             self.merge_idx(ifn=self.pic, prefix=prefix)
             
     def merge_idx(self, ifn='', prefix=''):
@@ -97,6 +100,8 @@ class Indexer(object):
             
     def parse_query(self, uni_query='', ):
         list_id = []
+        
+        list_id.extend(self.match(re.sub('\s+','',uni_query), self.one_idx))
         list_id.extend(self.match(uni_query, self.one_idx))
         if len(list_id)<10 and self.two:
             list_id.extend(self.match(uni_query, self.two_idx))
@@ -119,7 +124,7 @@ class Indexer(object):
                 yhBitset = YhBitset.YhBitset()
                 yhBitset.frombytes(str_s)
                 list_bitset.append(yhBitset)
-                #logger.error('%s matched len %s' % (s, len(yhBitset.search())))
+                logger.error('%s matched len %s' % (s, yhBitset.length()))
             else:
                 logger.error('%s filtered' % s)
         bitset = YhBitset.YhBitset()
@@ -127,11 +132,12 @@ class Indexer(object):
             bitset = list_bitset[0]
             for bs in list_bitset[1:]:
                 test = bitset.anditem(bs)
-                if len(test.search(200, 1))<10:
+                if test.length()<=0:
                     break
                 bitset = test
         list_docid = bitset.search(200, 1)
         list_docid = Ranker.Ranker().getRank(name='unigram_rank', list_id=list_docid)
+        logger.error('match [%s] [%s] [%s]' % (uni_query, list_s, list_docid))
         return list_docid[:200]
     
     def match_fuzzy(self, uni_query='', idx={}):
@@ -151,6 +157,7 @@ class Indexer(object):
                 logger.error('%s filtered' % s)
         #logger.error('match_title seg %s  len %s ids %s' % ('|'.join(list_s), len(list_docid), list_docid[:3]))
         list_docid = Ranker.Ranker().getRank(name='unigram_rank', list_id=list_docid)
+        logger.error('match_fuzzy %s' % list_docid)
         return list_docid[:200]
     
     
@@ -159,6 +166,6 @@ class Indexer(object):
 indexer = Indexer()
 
 if __name__=='__main__':
-    #indexer.build_idx() 
+    indexer.build_idx() 
     logger.error(indexer.parse_query(u'感冒'))
     

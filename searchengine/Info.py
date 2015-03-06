@@ -38,13 +38,16 @@ class Info:
         pipeline_zero = Redis_zero.redis_zero.pipeline()
         num_execute = 0
         for f in glob.glob('%s*' % self.src):
-            dict_info = cPickle.load(open(f))
-            for k in dict_info:
-                pipeline_zero.hset(self.prefix, k, simplejson.dumps(dict_info[k]))
-                num_execute += 1
-                if num_execute % 10000 == 0:
-                    pipeline_zero.execute()
-            logger.error('saveInfo %s %s' % (f, num_execute))
+            try:
+                dict_info = cPickle.load(open(f))
+                for k in dict_info:
+                    pipeline_zero.hset(self.prefix, k, simplejson.dumps(dict_info[k]))
+                    num_execute += 1
+                    if num_execute % 10000 == 0:
+                        pipeline_zero.execute()
+                logger.error('saveInfo %s %s' % (f, num_execute))
+            except:
+                logger.error('saveInfo failed %s %s' % (f, traceback.format_exc()))
         pipeline_zero.execute()
         logger.error('saveInfo %s' % num_execute)
 
