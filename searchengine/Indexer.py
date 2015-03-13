@@ -109,9 +109,18 @@ class Indexer(object):
             list_id.extend(self.match(uni_query, self.three_idx))
         if len(list_id)<10:
             list_id.extend(self.match_fuzzy(uni_query,self.one_idx))
-        return list_id
-        
-        
+        return self.unify_id(uni_query, list_id)
+    
+    def unify_id(self, uni_query='', list_id=[]):
+        set_id = set()
+        list_res = []
+        for (id, rank) in list_id:
+            if id not in set_id:
+                set_id.add(id)
+                list_res.append((id,rank))
+        logger.error('query %s list_id %s list_res %s' % (uni_query, len(list_id), len(list_res)))
+        return list_res
+            
     def match(self, uni_query='', idx={}):
         if not idx: return []
         segmenter = Segmenter.get_seg(id=idx['seg'])
@@ -136,6 +145,7 @@ class Indexer(object):
                     break
                 bitset = test
         list_docid = bitset.search(200, 1)
+        list_docid = ['%s' % id for id in list_docid]
         list_docid = Ranker.Ranker().getRank(name='unigram_rank', list_id=list_docid)
         logger.error('match [%s] [%s] [%s]' % (uni_query, list_s, list_docid))
         return list_docid[:200]
@@ -156,6 +166,7 @@ class Indexer(object):
             else:
                 logger.error('%s filtered' % s)
         #logger.error('match_title seg %s  len %s ids %s' % ('|'.join(list_s), len(list_docid), list_docid[:3]))
+        list_docid = ['%s' % id for id in list_docid]
         list_docid = Ranker.Ranker().getRank(name='unigram_rank', list_id=list_docid)
         logger.error('match_fuzzy %s' % list_docid)
         return list_docid[:200]

@@ -72,13 +72,7 @@ class Searcher(object):
             logger.error('get_cache dached [%s]' % uni_query)
             list_idx = Indexer.indexer.parse_query(uni_query)
             if list_idx:
-                list_id = []
-                set_id = set()
-                for (id, rank) in list_idx[:200]:
-                    if id in set_id: continue
-                    list_id.append(id)
-                    set_id.add(id)
-                        
+                list_id = [idx[0] for idx in list_idx]
                 list_url = Info.Info().getInfoById(list_id[:200])
                 num_url = len(list_url)
                 for d in list_url:
