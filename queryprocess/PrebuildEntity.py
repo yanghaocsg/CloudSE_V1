@@ -8,7 +8,7 @@ import cPickle,ConfigParser
 import lz4,csv
 import glob
 
-import YhLog,  YhTool
+import YhLog,  YhTool, YhChineseNorm
 logger = logging.getLogger(__file__)
 
 cwd = Path(__file__).absolute().ancestor(1) 
@@ -25,11 +25,8 @@ def prebuildEntity(list_ifn=[('ill', '../data/pic/ill.pic'), ('doctor', '../data
                         buf = data[field]
                         if not isinstance(buf, unicode):
                             buf = unicode(buf, 'utf8', 'ignore')
-                        list_query = re.split(r'[,，\s]', buf)
-                        
-                        for query in list_query: 
-                            if u'沈阳市中西' == query: logger.error('error data %s' % buf)
-                                
+                        list_query = YhChineseNorm.string2EngChnNum(buf)
+                        for query in list_query:
                             if not isinstance(query, unicode):
                                 query = unicode(query, 'utf8', 'ignore')
                             if not isinstance(query, unicode) or not query: continue

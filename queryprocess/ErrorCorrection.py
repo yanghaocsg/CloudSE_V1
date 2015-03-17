@@ -7,8 +7,13 @@ from unipath import Path
 import cPickle,ConfigParser
 import lz4,csv
 import glob
+from tornado.wsgi import WSGIContainer
+from tornado.httpserver import HTTPServer
+from tornado.ioloop import IOLoop
+import tornado.gen, tornado.web
 
-import YhLog,  YhTool
+
+import YhLog,  YhTool, YhChineseNorm
 from YhPinyin import yhpinyin
 logger = logging.getLogger(__file__)
 
@@ -25,12 +30,13 @@ class ErrorCorrection:
         self.ofn_chinese_ed = self.config.get(head, 'ofn_chinese_ed')
         self.ofn_pinyin=self.config.get(head, 'ofn_pinyin')
         self.ofn_pinyin_ed=self.config.get(head, 'ofn_pinyin_ed')
-        self.ec_len = self.config.get(head, 'ec_len')
-        self.max_keyword = self.config.get(head, 'max_keyword')
+        self.ec_len = int(self.config.get(head, 'ec_len'))
+        self.max_keyword = int(self.config.get(head, 'max_keyword'))
         self.dict_data = defaultdict(set)
         self.dict_ec_pinyin= {}
         self.dict_entity =  {}
         logger.error('ec_len %s' % self.ec_len)
+        self.load()
         
     def load(self):
         self.dict_ec_pinyin = cPickle.load(open(Path(self.cwd, self.ofn_pinyin)))
@@ -47,7 +53,7 @@ class ErrorCorrection:
             if query in self.dict_ec_pinyin:
                 str_res = self.dict_ec_pinyin[query]
             else:
-                set_pinyin = yhpinyin.line2py(query)
+                set_pinyin = yhpinyin.line2py_fuzzy(query)
                 logger.error('errorcorrect [%s] [%s]' % (query, '|'.join(set_pinyin)))
                 for s in set_pinyin:
                     #logger.error('errorcorrect pinyin %s\t%s' % (query, s))
@@ -56,8 +62,6 @@ class ErrorCorrection:
                         break
                 if str_res and not self.is_ed_equal_1(query, str_res):
                     str_res = ''
-            if str_res:
-                status = 1
         logger.error('ec [%s] [%s] [%s]' % (query, str_res, status))
         return str_res, status
     
@@ -76,6 +80,7 @@ class ErrorCorrection:
     def ec_leftmost(self, query=u'吊丝男士第一季全集'):
         str_res, status = '', 0
         if len(query) < self.ec_len:
+            logger.error('ec leftmost too small [%s] [%s] [%s] ' % (query,len(query), self.ec_len))
             return '', status
         else:
             bool_chinese = 0
@@ -85,17 +90,15 @@ class ErrorCorrection:
                     break
             if bool_chinese: #only ec left part, for chinese
                 end_pos = min(len(query), self.max_keyword)
-                for i in xrange(end_pos, self.min_keyword-1, -1):
+                for i in xrange(end_pos, 2, -1):
                     sub_query = query[:i]
-                    #logger.error('sub_query %s' % sub_query)
+                    logger.error('sub_query %s' % sub_query)
                     str_res, status = self.ec(sub_query)
                     if str_res:
                         #logger.error('errorcorrect_leftmost org[%s] sub_query[%s] sub_ec[%s]' % (query, sub_query, str_res))
                         str_res = str_res + query[i:]
                         status = 2
                         break
-                    else:
-                        status = 0
         logger.error('ec leftmost [%s] [%s] [%s]' % (query, str_res, status))
         return str_res, status    
     
@@ -107,13 +110,13 @@ class ErrorCorrection:
         1, pinyin ec
         2, pinyin left most ec
     '''
-    def process(self, query='心藏病'):
-        str_res, status = '', 0
-        str_res, status = self.ec(query)
-        if status == 0:
+    def process(self, query=u'心藏病'):
+        str_res, status =  self.ec(query)
+        logger.error('ec res [%s]\t[%s]' % (str_res, status))
+        if not str_res:
             str_res, status = self.ec_leftmost(query)
         logger.error('ec process [%s] [%s] [%s]' % (query, str_res, status))
-        return str_res, status
+        return {'res':str_res, 'status':status}
         
     #build process
     def build(self):
@@ -129,21 +132,9 @@ class ErrorCorrection:
     def build_pinyin(self, dict_query={}, ofn_pic='',test=1):
         dict_pinyin = {} #defaultdict(set)
         for k, v in dict_query.iteritems():
-            list_py_k = yhpinyin.line2py_list(k)
-            py = ''.join(list_py_k)
-            dict_pinyin[py] = k
-            for i in range(len(list_py_k)):
-                py_i = list_py_k[i]
-                if py_i[0] in ['l', 'n']:
-                    py = ''.join(list_py_k[:i] + ['l'] + [py_i[1:]]+list_py_k[i+1:])
-                    py = ''.join(list_py_k[:i] + ['n'] + [py_i[1:]]+list_py_k[i+1:])
-                    dict_pinyin[py] = k
-                if py_i[-2:] in ['an','in', 'on']:
-                    py = ''.join(list_py_k[:i] + [py_i] +['g']+list_py_k[i+1:])
-                    dict_pinyin[py]= k 
-                if py_i[-3:] in ['ang', 'ing', 'ong']:
-                    py = ''.join(list_py_k[:i] + [py_i[:-1]]+list_py_k[i+1:])
-                    dict_pinyin[py] = k
+            list_py_k = yhpinyin.line2py_fuzzy(k)
+            for py in list_py_k:
+                dict_pinyin[py] = k
         cPickle.dump(dict_pinyin, open(Path(self.cwd, ofn_pic), 'w+'))
         logger.error('build_pinyin file %s len %s' % (ofn_pic, len(dict_pinyin)))
         if test:
@@ -156,12 +147,30 @@ class ErrorCorrection:
             if i > 10: break
             logger.error('validate %s\t%s' % (k, '|'.join(['%s' % s for s in dict_query[k]])))
 
+
+class Ec_Handler(tornado.web.RequestHandler):
+    @tornado.web.asynchronous
+    @tornado.gen.engine
+    def get(self):
+        try:
+            dict_qs = YhTool.yh_urlparse_params(self.request.uri, ['query', 's', 'n', 'cache'], ['', '0', '20', '1'] )
+            query, start, num,cache = dict_qs['query'], int(dict_qs['s']), int(dict_qs['n']), int(dict_qs['cache'])
+            logger.error('query[%s]\tstart[%s]\tnum[%s]\tcache[%s]\tpid[%s]' % (query, start, num, cache, os.getpid()))
+            self.set_header('Content-Type', 'application/json; charset=UTF-8')
+            self.write(simplejson.dumps(ec.process(query)))
+        except Exception:
+            logger.error('svs_handler error time[%s][%s][%s]'% (self.request.request_time(), traceback.format_exc(), self.request.uri))
+            self.write(simplejson.dumps({'status':1, 'errlog':traceback.format_exc(), 'url':self.request.uri}))
+        finally:
+            self.finish()
+            logger.error('request_time %s [%s]' %(self.request.uri, self.request.request_time()))
 ec = ErrorCorrection()
+
 def run():
     ec.build()
     ec.load()
     ec.process()
-    ec.process('xinzangbin')
+    ec.process(u'心藏病改怎么办')
     ec.process('xinzangbing')
     
 if __name__=='__main__':

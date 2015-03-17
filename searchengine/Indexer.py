@@ -68,6 +68,7 @@ class Indexer(object):
         for idx in [self.one_idx, self.two_idx, self.three_idx]:
             if not idx: continue
             field, seg, prefix = idx['field'], idx['seg'], idx['prefix']
+            print field, seg, prefix
             segmenter = Segmenter.get_seg(id=int(seg))
             for f in glob.glob('%s*' % self.src):
                 ofn='%s.%s' % (self.pic, idx_num)
@@ -77,12 +78,22 @@ class Indexer(object):
             for r in list_res:
                 logger.error('idx %s finished' % r.get(6000))
             self.merge_idx(ifn=self.pic, prefix=prefix)
+
+    def int_set(self, set_v):
+        set_t = set()
+        for v in set_v:
+            try:
+                set_t.add(int(v))
+            except:
+                continue
+        return set_t
             
     def merge_idx(self, ifn='', prefix=''):
         dict_idx = defaultdict(set)
         for f in glob.glob('%s*' % ifn):
             dict_part = cPickle.load(open(f))
             for k,v in dict_part.iteritems():
+                v = self.int_set(v)
                 dict_idx[k] |= v
             logger.error('merge idx ifn %s len %s' % (f, len(dict_idx)))
         pipeline_zero = redis_zero.pipeline()

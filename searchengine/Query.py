@@ -29,9 +29,9 @@ class Query(object):
     def pickle(self, pic_stop=''):
         try:
             if pic_stop:
-                self.set_stop = cPickle.load(open(pic_stop))
+                self.set_stop = cPickle.load(open(Path(self,cwd, pic_stop)))
             else:
-                self.set_stop = cPickle.load(open(self.pic_stop))
+                self.set_stop = cPickle.load(open(Path(self.cwd, self.pic_stop)))
         except:
             logger.error('pickle error %s' % traceback.format_exc())
             self.load()
@@ -39,11 +39,11 @@ class Query(object):
         
     def load(self):
         self.set_stop = set()
-        for l in open(self.fn_stop):
+        for l in open(Path(self.cwd, self.fn_stop)):
             l = unicode(l.strip(), 'utf8', 'ignore')
             if not l: continue
             self.set_stop.add(l.lower())
-        cPickle.dump(self.set_stop, open(self.pic_stop, 'w+'))
+        cPickle.dump(self.set_stop, open(Path(self.cwd, self.pic_stop), 'w+'))
         logger.error('load dict_all %s' % len(self.set_stop))
             
     def run(self, query):

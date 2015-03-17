@@ -15,7 +15,10 @@ import ConfigParser
 #self module
 import YhLog
 import Searcher, Restart
-logger = logging.getLogger(__name__)
+import Xywy_Handler
+sys.path.append('../queryprocess')
+import ErrorCorrection, RelatedSearch
+logger = logging.getLogger(__file__)
 
 logger.error('global init start [%s]\n====================='%datetime.datetime.now())
 class root_handler(tornado.web.RequestHandler):
@@ -90,6 +93,13 @@ def multi_app():
         (r'/reload', reload_handler),
         (r'/restart', restart_handler),
         (r'/se', Searcher.Search_Handler),
+        (r'/docse', Xywy_Handler.Doc_Handler),
+        (r'/illse', Xywy_Handler.Ill_Handler),
+        (r'/hosse', Xywy_Handler.Hospital_Handler),
+        (r'/yaose', Xywy_Handler.Yao_Handler),
+        (r'/comse', Xywy_Handler.Compose_Handler),
+        (r'/ec', ErrorCorrection.Ec_Handler),
+        (r'/rs', RelatedSearch.Rs_Handler),
         #(r'/sug', SugIndexer.Sug_Handler),
         ], **settings)
     http_server = HTTPServer(app)
