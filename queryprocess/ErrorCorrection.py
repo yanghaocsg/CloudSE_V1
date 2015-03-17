@@ -113,6 +113,8 @@ class ErrorCorrection:
     def process(self, query=u'心藏病'):
         str_res, status =  self.ec(query)
         logger.error('ec res [%s]\t[%s]' % (str_res, status))
+        if status<0:
+            return {'res':str_res, 'status':status}
         if not str_res:
             str_res, status = self.ec_leftmost(query)
         logger.error('ec process [%s] [%s] [%s]' % (query, str_res, status))

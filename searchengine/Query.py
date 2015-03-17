@@ -54,6 +54,8 @@ class Query(object):
             logger.error('run %s\t%s\t%s' % (query, ','.join(list_s), ','.join(list_res)))
         except:
             logger.error('run_error %s\t%s' % (query, traceback.format_exc()))
+        if not list_res:
+            list_res.append(query)
         return '\t'.join(list_res)
 query = Query()
 if __name__=='__main__':

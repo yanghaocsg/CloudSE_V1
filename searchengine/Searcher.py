@@ -37,11 +37,7 @@ class Searcher(object):
                 query = unicode(query, 'utf8', 'ignore')
             uni_query = Query.query.run(query)
             list_url, num_url = [], 0
-            if uni_query:
-                #logger.error('process st %s' % st) 
-                list_url, num_url = self.get_cache(query, uni_query, start, num, cache, st)
-            else:
-                raise
+            list_url, num_url = self.get_cache(query, uni_query, start, num, cache, st)
             dict_res = {'seg': Query.yhTrieSeg.seg(query) , 'res':list_url, 'status':0, 'totalnum':num_url}
             end = datetime.datetime.now()
             logger.error('query %s list_url %s num_url %s time %s' % (query, len(list_url), num_url, end-before))
