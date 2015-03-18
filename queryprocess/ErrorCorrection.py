@@ -90,7 +90,7 @@ class ErrorCorrection:
                     break
             if bool_chinese: #only ec left part, for chinese
                 end_pos = min(len(query), self.max_keyword)
-                for i in xrange(end_pos, 2, -1):
+                for i in xrange(end_pos, 1, -1):
                     sub_query = query[:i]
                     logger.error('sub_query %s' % sub_query)
                     str_res, status = self.ec(sub_query)
@@ -172,7 +172,7 @@ def run():
     ec.build()
     ec.load()
     ec.process()
-    ec.process(u'心藏病改怎么办')
+    ec.process(u'敢冒怎')
     ec.process('xinzangbing')
     
 if __name__=='__main__':
