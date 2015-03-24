@@ -172,7 +172,7 @@ def run():
     ec.build()
     ec.load()
     ec.process()
-    ec.process(u'敢冒怎')
+    ec.process(u'敢冒')
     ec.process('xinzangbing')
     
 if __name__=='__main__':

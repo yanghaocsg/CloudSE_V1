@@ -97,6 +97,7 @@ def multi_app():
         (r'/illse', Xywy_Handler.Ill_Handler),
         (r'/hosse', Xywy_Handler.Hospital_Handler),
         (r'/yaose', Xywy_Handler.Yao_Handler),
+        (r'/zxse', Xywy_Handler.Zixun_Handler),
         (r'/comse', Xywy_Handler.Compose_Handler),
         (r'/ec', ErrorCorrection.Ec_Handler),
         (r'/rs', RelatedSearch.Rs_Handler),
