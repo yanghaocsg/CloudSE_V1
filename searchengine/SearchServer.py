@@ -99,6 +99,7 @@ def multi_app():
         (r'/yaose', Xywy_Handler.Yao_Handler),
         (r'/zxse', Xywy_Handler.Zixun_Handler),
         (r'/comse', Xywy_Handler.Compose_Handler),
+        (r'/delinfo', Xywy_Handler.Blacklist_Handler),
         (r'/ec', ErrorCorrection.Ec_Handler),
         (r'/rs', RelatedSearch.Rs_Handler),
         #(r'/sug', SugIndexer.Sug_Handler),

@@ -51,6 +51,9 @@ class Query(object):
         try:
             list_s = yhTrieSeg.seg(query)
             list_res =[s for s in list_s if s not in self.set_stop]
+            list_res_res = [s for s in list_res if YhChineseNorm.is_chinese(s)]
+            if list_res_res:
+                list_res = list_res_res
             logger.error('run %s\t%s\t%s' % (query, ','.join(list_s), ','.join(list_res)))
         except:
             logger.error('run_error %s\t%s' % (query, traceback.format_exc()))

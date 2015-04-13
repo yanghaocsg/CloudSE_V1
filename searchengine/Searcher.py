@@ -13,6 +13,7 @@ from tornado.httpserver import HTTPServer
 from tornado.ioloop import IOLoop
 import tornado.gen, tornado.web
 
+from Xywy_Blacklist import Xywy_Blacklist
 
 #self module
 import YhLog, YhTool,  YhMc
@@ -25,10 +26,11 @@ cwd = Path(__file__).absolute().ancestor(1)
 
 
 class Searcher(object):
-    def __init__(self, company='xywy', db='tag', cache_prefix='cache'):
+    def __init__(self, company='xywy', db='tag', cache_prefix='cache', prefix_black_tableid = "table_id_%s_%s"):
         self.cwd = Path(__file__).absolute().ancestor(1)
         self.company = company
         self.cache_prefix = '%s:%s' % (cache_prefix, self.company)
+        self.blacklist = Xywy_Blacklist(prefix_black_tableid)
     
     def process(self, query='', start=0, num=10, cache=1, mark=1, st=1):
         try:
@@ -42,6 +44,7 @@ class Searcher(object):
                 list_url, num_url = self.get_cache(query, uni_query, start, num, cache, st)
             else:
                 raise
+
             dict_res = {'seg': Query.yhTrieSeg.seg(query) , 'res':list_url, 'status':0, 'totalnum':num_url}
             end = datetime.datetime.now()
             logger.error('query %s list_url %s num_url %s time %s' % (query, len(list_url), num_url, end-before))
@@ -60,6 +63,7 @@ class Searcher(object):
     def get_cache(self, query='',  uni_query='', start=0, num=10, cache=1, st=1):
         res = YhMc.yhMc.get_cache('%s:%s' % (self.cache_prefix, uni_query))
         list_url,num_url = [], 0
+        list_last = []
         if res and cache:
             try:
                 logger.error('get_cache cached [%s]' % '|'.join(list_s))
@@ -70,22 +74,30 @@ class Searcher(object):
                 logger.error('get_cache cache_data error')
         if not list_url:
             logger.error('get_cache dached [%s]' % uni_query)
-            list_idx = Indexer.indexer.parse_query(uni_query)
+            list_idx = Indexer.indexer.parse_query(uni_query, query)
             if list_idx:
                 list_id = [idx[0] for idx in list_idx]
                 list_url = Info.Info().getInfoById(list_id[:200])
-                num_url = len(list_url)
-                for d in list_url:
+
+                list_table_id = list()
+                for item in list_url:
+                    list_table_id.append((item["cat"], item["id"]))
+                list_black = self.blacklist.get_table_id(list_table_id)
+                for i, d in enumerate(list_url):
+                    if list_black[i]:
+                        continue
+                    list_last.append(d)
                     d['mark_red_title'], d['mark_red_brief'] = '',''
                     if 'title' in d and d['title']:
                         d['mark_red_title'] = self.mark_red(uni_query.split(), d['title'])
                     if 'brief' in d and d['brief']:
                         d['mark_red_brief'] = self.mark_red(uni_query.split(), d['brief'])
-        buf = simplejson.dumps({'list_url':list_url, 'num_url':num_url})
-        if list_url:
+                num_url = len(list_last)
+        buf = simplejson.dumps({'list_url':list_last, 'num_url':num_url})
+        if list_last:
             YhMc.yhMc.add_cache('%s:%s' % (self.cache_prefix, uni_query), buf)        
         logger.error('get_cache list_url [%s]' % num_url)
-        return list_url[start:start+num], num_url
+        return list_last[start:start+num], num_url
     
         
 searcher = Searcher()

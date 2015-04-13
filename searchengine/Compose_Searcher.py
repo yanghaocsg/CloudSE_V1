@@ -51,7 +51,7 @@ class Compose_Searcher(object):
                     logger.error('bbs_ec %s\t%s' % (query_ec, len(bbs_ec)))
                     if bbs_ec:
                         bbs_res['res'] = bbs_ec['res'][:5] + bbs_res['res']
-                last_res = self.merge_res(bbs_res, doc_res, ill_res, hospital_res, yao_res, zx_res)
+                last_res = self.merge_res(query, bbs_res, doc_res, ill_res, hospital_res, yao_res, zx_res)
                 if last_res:
                     YhMc.yhMc.add_cache(cache_key, simplejson.dumps(last_res))
             last_res["res"] =  last_res["res"][start:start+num]
@@ -60,7 +60,7 @@ class Compose_Searcher(object):
             logger.error(traceback.format_exc())
             return {}
 
-    def merge_res(self, bbs_res, doc_res, ill_res, hospital_res, yao_res, zx_res):
+    def merge_res(self, query, bbs_res, doc_res, ill_res, hospital_res, yao_res, zx_res):
         dict_res = {}
         dict_res["seg"] = bbs_res["seg"]
         dict_res["status"] = bbs_res["status"]
@@ -72,36 +72,24 @@ class Compose_Searcher(object):
         yao_data = yao_res["res"]
         zixun_data = zx_res["res"]
 
-        
-        bbs_tmp = bbs_data[:6]
-        bbs_data = bbs_data[6:]
-        while (len(bbs_tmp) > 0):
-            if doc_data:
-                bbs_tmp.append(doc_data[:1])
-                doc_data = doc_data[1:]
-            if ill_data:
-                bbs_tmp.extend(ill_data[:1])
-                ill_data = ill_data[1:]
-            if hospital_data:
-                bbs_tmp.extend(hospital_data[:1])
-                hospital_data = hospital_data[1:]
-            if yao_data:
-                bbs_tmp.extend(yao_data[:1])
-                yao_data = yao_data[1:]
-            if zixun_data:
-                bbs_tmp.extend(zixun_data[:1])
-                zixun_data = zixun_data[1:]
-            list_data.extend(bbs_tmp)
-            bbs_tmp = bbs_data[:6]
-            bbs_data = bbs_data[6:]
-
-        dict_res["res"] = list_data
-        dict_res["totalnum"] = len(list_data)
-
+        list_data_head = bbs_data[:6]
+        list_data_other = bbs_data[6:]
+        for data in doc_data, ill_data, hospital_data, yao_data, zixun_data:
+            if data:
+                if 'name' in data[0] and data[0]["name"] == query:
+                    list_data_head.insert(0, data[0])
+                else:
+                    list_data_head.append(data[0])
+                if len(data)>=2:
+                    list_data_other.insert(11, data[1])
+        for data in doc_data, ill_data, hospital_data, yao_data, zixun_data:
+            list_data_other.extend(data[2:])
+        dict_res["res"] = list_data_head + list_data_other
+        dict_res["totalnum"] = len(list_data_head + list_data_other)
         return dict_res
 
 compose_searcher = Compose_Searcher()
 
 if __name__ == "__main__":
     searcher = Compose_Searcher()
-    searcher.process("陈龙奇")
+    searcher.process(u'陈龙奇')

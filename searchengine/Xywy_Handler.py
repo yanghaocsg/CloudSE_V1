@@ -16,6 +16,7 @@ import tornado.gen, tornado.web
 import YhLog, YhTool
 import Xywy_Searcher
 import Compose_Searcher
+from Xywy_Blacklist import Xywy_Blacklist
 sys.path.append('../queryprocess')
 from ErrorCorrection import ec
 from RelatedSearch import rs
@@ -122,6 +123,26 @@ class Compose_Handler(tornado.web.RequestHandler):
             self.write(simplejson.dumps(dict_res))
         except Exception:
             logger.error('svs_handler error time[%s][%s][%s]'% (self.request.request_time(), traceback.format_exc(), self.request.uri))
+            self.write(simplejson.dumps({'status':1, 'errlog':traceback.format_exc(), 'url':self.request.uri}))
+        finally:
+            self.finish()
+            logger.error('request_time %s [%s]' %(self.request.uri, self.request.request_time()))
+
+
+
+black_list = Xywy_Blacklist("table_id_%s_%s")
+class Blacklist_Handler(tornado.web.RequestHandler):
+    @tornado.web.asynchronous
+    def get(self):
+        try:
+            dict_qs = YhTool.yh_urlparse_params(self.request.uri, ['table', 'id'], ['', ''])
+            table, id = dict_qs['table'], dict_qs["id"]
+            logger.error('table[%s]\tid[%s]' %(table, id))
+            self.set_header('Content-Type', 'application/json; charset=UTF-8')
+            dict_res = black_list.set_table_id(table, id)
+            self.write(simplejson.dumps(dict_res))
+        except Exception:
+            logger.error('Blacklist_Handler error time[%s][%s][%s]'% (self.request.request_time(), traceback.format_exc(), self.request.uri))
             self.write(simplejson.dumps({'status':1, 'errlog':traceback.format_exc(), 'url':self.request.uri}))
         finally:
             self.finish()

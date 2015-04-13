@@ -37,12 +37,14 @@ class Xywy_Info(object):
     def save_info(self):
         pipeline_zero = Redis_zero.redis_zero.pipeline()
         num_execute = 0
+        print self.src
         for f in glob.glob('%s*' % self.src):
             print f
             try:
                 dict_info = cPickle.load(open(f))
                 for key,value in dict_info.items():
                     pipeline_zero.hset(self.prefix, key, simplejson.dumps(value))
+                    #print key, value["name"].encode("utf-8")
                     num_execute += 1
                     if num_execute % 10000 == 0:
                         pipeline_zero.execute()
@@ -51,6 +53,7 @@ class Xywy_Info(object):
                 logger.error('saveDoctorInfo failed %s %s' % (f, traceback.format_exc()))
         pipeline_zero.execute()
         logger.error('saveDoctorInfo %s' % num_execute)
+
 
     def get_info(self, doctor_id):
         print self.prefix
@@ -64,8 +67,8 @@ yao_info = Xywy_Info(conf="./conf/xywy_se.conf", head="yao_info")
 zixun_info = Xywy_Info(conf="./conf/xywy_se.conf", head="zixun_info")
 
 if __name__ == "__main__":
-    yao_info.save_info()
     doctor_info.save_info()
+    yao_info.save_info()
     ill_info.save_info()
     hospital_info.save_info()
     zixun_info.save_info()

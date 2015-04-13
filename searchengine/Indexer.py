@@ -9,6 +9,7 @@ from unipath import Path
 import cPickle
 from bitstring import BitArray
 import lz4, glob, ConfigParser
+from math import floor
 
 #local module
 import Segmenter
@@ -109,10 +110,10 @@ class Indexer(object):
         pipeline_zero.execute()
         logger.error('merge_idx ifn %s prefix %s len_num %s ' % (ifn, prefix, len_num))
             
-    def parse_query(self, uni_query='', ):
+    def parse_query(self, uni_query='', query=''):
         list_id = []
         
-        list_id.extend(self.match(re.sub('\s+','',uni_query), self.one_idx))
+        list_id.extend(self.match(uni_query=query, idx=self.one_idx, full=1))
         list_id.extend(self.match(uni_query, self.one_idx))
         if len(list_id)<10 and self.two:
             list_id.extend(self.match(uni_query, self.two_idx))
@@ -132,7 +133,93 @@ class Indexer(object):
         logger.error('query %s list_id %s list_res %s' % (uni_query, len(list_id), len(list_res)))
         return list_res
             
-    def match(self, uni_query='', idx={}):
+    def match(self, uni_query='', idx={}, full=0):
+        if not idx: return []
+        segmenter = Segmenter.get_seg(id=idx['seg'])
+        prefix = idx['prefix']
+        list_s = segmenter(uni_query)
+        logger.error("================lists:%s"  %("|".join(list_s)))
+        list_bitset, list_docid, len_list_docid = [], [], 0
+        for s in list_s:
+            str_s = redis_zero.hget(prefix, s)
+            if str_s:
+                yhBitset = YhBitset.YhBitset()
+                yhBitset.frombytes(str_s)
+                list_bitset.append(yhBitset)
+                logger.error('%s matched len %s' % (s, yhBitset.length()))
+            else:
+                logger.error('%s filtered' % s)
+        
+        bitset = YhBitset.YhBitset()
+        bitset_join_len = 0
+        if list_bitset:
+            bitset = list_bitset[0]
+            bitset_join_len += 1
+            for bs in list_bitset[1:]:
+                test = bitset.anditem(bs)
+                if test.length()<=0:
+                    break
+                bitset = test
+                bitset_join_len += 1
+        '''
+        bitset_right = YhBitset.YhBitset()
+        if list_bitset:
+            for bs in reversed(list_bitset):
+                if not bitset_right.length():
+                    bitset_right = bs
+                else:
+                    test = bitset_right.anditem(bs)
+                    if test.length()<=0:
+                        break
+                    bitset_right = test
+        '''
+        if full:
+            if bitset_join_len < floor(0.8 * len(list_s)):
+                return []
+            logger.error('match full %s %s' % (bitset_join_len, len(list_s)))
+        #bitset= bitset.oritem(bitset_right)
+        list_docid = bitset.search(200, 1)
+        list_docid = ['%s' % id for id in list_docid]
+        list_docid = Ranker.Ranker().getRank(name='unigram_rank', list_id=list_docid)
+        logger.error('match [%s] [%s] [%s]' % (uni_query, list_s, list_docid))
+        return list_docid[:200]
+    
+    def match_new(self, uni_query='', idx={}, full=0):
+        if not idx: return []
+        segmenter = Segmenter.get_seg(id=idx['seg'])
+        prefix = idx['prefix']
+        list_s = segmenter(uni_query)
+        logger.error("================lists:%s"  %("|".join(list_s)))
+        list_bitset, list_docid, len_list_docid = [], [], 0
+        for s in list_s:
+            str_s = redis_zero.hget(prefix, s)
+            if str_s:
+                yhBitset = YhBitset.YhBitset()
+                yhBitset.frombytes(str_s)
+                list_bitset.append([yhBitset, yhBitset.length(), s])
+                logger.error('%s matched len %s' % (s, yhBitset.length()))
+            else:
+                logger.error('%s filtered' % s)
+                #if full:
+                #    return []
+        bitset = YhBitset.YhBitset()
+        list_bitset = sorted(list_bitset, key=lambda x:x[1])
+        if list_bitset:
+            bitset = list_bitset[0][0]
+            logger.error('%s[%s]' % (list_bitset[0][2], list_bitset[0][1]))
+            for bs in list_bitset[1:]:
+                test = bitset.anditem(bs[0])
+                logger.error('%s[%s]' % (bs[2], bs[1]))
+                if test.length()<=0:
+                    break
+                bitset = test
+        list_docid = bitset.search(200, 1)
+        list_docid = ['%s' % id for id in list_docid]
+        list_docid = Ranker.Ranker().getRank(name='unigram_rank', list_id=list_docid)
+        logger.error('match [%s] [%s] [%s]' % (uni_query, list_s, list_docid))
+        return list_docid[:200]
+        
+    def match_fuzzy(self, uni_query='', idx={}):
         if not idx: return []
         segmenter = Segmenter.get_seg(id=idx['seg'])
         prefix = idx['prefix']
@@ -147,36 +234,18 @@ class Indexer(object):
                 logger.error('%s matched len %s' % (s, yhBitset.length()))
             else:
                 logger.error('%s filtered' % s)
+
         bitset = YhBitset.YhBitset()
         if list_bitset:
             bitset = list_bitset[0]
             for bs in list_bitset[1:]:
                 test = bitset.anditem(bs)
-                if test.length()<=0:
+                if test.length()<=10:
                     break
                 bitset = test
-        list_docid = bitset.search(200, 1)
-        list_docid = ['%s' % id for id in list_docid]
-        list_docid = Ranker.Ranker().getRank(name='unigram_rank', list_id=list_docid)
-        logger.error('match [%s] [%s] [%s]' % (uni_query, list_s, list_docid))
-        return list_docid[:200]
-    
-    def match_fuzzy(self, uni_query='', idx={}):
-        if not idx: return []
-        segmenter = Segmenter.get_seg(id=idx['seg'])
-        prefix = idx['prefix']
-        list_s = segmenter(uni_query)
-        list_bitset, list_docid, len_list_docid = [], [], 0
-        for s in list_s:
-            str_s = str_s = redis_zero.hget(prefix, s)
-            if str_s:
-                yhBitset = YhBitset.YhBitset()
-                yhBitset.frombytes(str_s)
-                list_docid = yhBitset.search(200, 1)
-                break
-            else:
-                logger.error('%s filtered' % s)
+                logger.error('test_length %s' % test.length())
         #logger.error('match_title seg %s  len %s ids %s' % ('|'.join(list_s), len(list_docid), list_docid[:3]))
+        list_docid = bitset.search(200, 1)
         list_docid = ['%s' % id for id in list_docid]
         list_docid = Ranker.Ranker().getRank(name='unigram_rank', list_id=list_docid)
         logger.error('match_fuzzy %s' % list_docid)

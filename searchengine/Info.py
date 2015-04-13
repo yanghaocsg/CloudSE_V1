@@ -38,6 +38,7 @@ class Info:
         pipeline_zero = Redis_zero.redis_zero.pipeline()
         num_execute = 0
         for f in glob.glob('%s*' % self.src):
+            print f
             try:
                 dict_info = cPickle.load(open(f))
                 for k in dict_info:

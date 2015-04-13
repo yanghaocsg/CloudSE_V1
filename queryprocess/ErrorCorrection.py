@@ -27,6 +27,7 @@ class ErrorCorrection:
         #src file
         self.ifn_pic = self.config.get(head, 'ifn_pic')
         self.ofn_entity = self.config.get(head, 'ofn_entity')
+        self.ofn_entity_txt = self.config.get(head, 'ofn_entity_txt')
         self.ofn_chinese_ed = self.config.get(head, 'ofn_chinese_ed')
         self.ofn_pinyin=self.config.get(head, 'ofn_pinyin')
         self.ofn_pinyin_ed=self.config.get(head, 'ofn_pinyin_ed')
@@ -54,27 +55,32 @@ class ErrorCorrection:
                 str_res = self.dict_ec_pinyin[query]
             else:
                 set_pinyin = yhpinyin.line2py_fuzzy(query)
-                logger.error('errorcorrect [%s] [%s]' % (query, '|'.join(set_pinyin)))
+                #logger.error('set_pinyin [%s] [%s]' % (query, '|'.join(set_pinyin)))
                 for s in set_pinyin:
-                    #logger.error('errorcorrect pinyin %s\t%s' % (query, s))
+                    logger.error('s in set_pinyin %s\t%s' % (query, s))
                     if s in self.dict_ec_pinyin:
                         str_res = self.dict_ec_pinyin[s]
                         break
                 if str_res and not self.is_ed_equal_1(query, str_res):
                     str_res = ''
-        logger.error('ec [%s] [%s] [%s]' % (query, str_res, status))
+        #logger.error('ec [%s] [%s] [%s]' % (query, str_res, status))
         return str_res, status
     
     def is_ed_equal_1(self, query=u'包卜', query_ec=u'鲍勃'):
-        #logger.error('%s %s' % (query, query_ec))
+        logger.error('ed_equal_1 %s %s' % (query, query_ec))
         if len(query) != len(query_ec):
             return False
         flag = False
-        for i in xrange(len(query)):
-            #logger.error('[%s][%s]' % (query[:i]+query[i+1:], query_ec[:i]+query_ec[i+1:]))
-            if query[:i]+query[i+1:] == query_ec[:i]+query_ec[i+1:]:
-                flag = True
-                break
+        if len(query)>3:
+            for i in xrange(len(query)):
+                #logger.error('[%s][%s]' % (query[:i]+query[i+1:], query_ec[:i]+query_ec[i+1:]))
+                if query[:i]+query[i+1:] == query_ec[:i]+query_ec[i+1:]:
+                    flag = True
+                    break
+        else:
+            flag =True
+                
+        #logger.error('ed_equal_ec %s\t%s\t%s' % (query, query_ec, flag)) 
         return flag
         
     def ec_leftmost(self, query=u'吊丝男士第一季全集'):
@@ -92,14 +98,14 @@ class ErrorCorrection:
                 end_pos = min(len(query), self.max_keyword)
                 for i in xrange(end_pos, 1, -1):
                     sub_query = query[:i]
-                    logger.error('sub_query %s' % sub_query)
+                    #logger.error('sub_query %s' % sub_query)
                     str_res, status = self.ec(sub_query)
                     if str_res:
                         #logger.error('errorcorrect_leftmost org[%s] sub_query[%s] sub_ec[%s]' % (query, sub_query, str_res))
                         str_res = str_res + query[i:]
                         status = 2
                         break
-        logger.error('ec leftmost [%s] [%s] [%s]' % (query, str_res, status))
+        #logger.error('ec leftmost [%s] [%s] [%s]' % (query, str_res, status))
         return str_res, status    
     
     '''
@@ -127,9 +133,17 @@ class ErrorCorrection:
         for tag,file in dict_ifn_pic.iteritems():
             for f in glob.glob(Path(self.cwd, file)):
                 dict_data = cPickle.load(open(f))
+                test_q = u'胃痛'
+                for d in dict_data:
+                    if d[:3] == test_q:
+                        logger.error('%s\t%s\t%s' % (f, d, dict_data[d])) 
+                
                 dict_query.update(dict_data)
+                logger.error('%s\t%s' % (f, len(dict_data)))
+        open(Path(self.cwd, self.ofn_entity_txt), 'w+').write(('\n'.join(dict_query.keys())).encode('utf8', 'ignore'))
         cPickle.dump(dict_query, open(Path(self.cwd, self.ofn_entity), 'w+'))
         self.build_pinyin(dict_query, self.ofn_pinyin)
+        logger.error('build  entity %s' % len(dict_query))
         
     def build_pinyin(self, dict_query={}, ofn_pic='',test=1):
         dict_pinyin = {} #defaultdict(set)
@@ -137,6 +151,8 @@ class ErrorCorrection:
             list_py_k = yhpinyin.line2py_fuzzy(k)
             for py in list_py_k:
                 dict_pinyin[py] = k
+            if k == u'胃痛':
+                logger.error('%s\t%s' % (k, '|'.join(list_py_k)))
         cPickle.dump(dict_pinyin, open(Path(self.cwd, ofn_pic), 'w+'))
         logger.error('build_pinyin file %s len %s' % (ofn_pic, len(dict_pinyin)))
         if test:
@@ -172,7 +188,8 @@ def run():
     ec.build()
     ec.load()
     ec.process()
-    ec.process(u'敢冒')
+    ec.process(u'北京')
+    ec.process(u'味疼')
     ec.process('xinzangbing')
     
 if __name__=='__main__':
