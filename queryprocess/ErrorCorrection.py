@@ -85,7 +85,7 @@ class ErrorCorrection:
         
     def ec_leftmost(self, query=u'吊丝男士第一季全集'):
         str_res, status = '', 0
-        if len(query) < self.ec_len:
+        if len(query) <= self.ec_len+1:
             logger.error('ec leftmost too small [%s] [%s] [%s] ' % (query,len(query), self.ec_len))
             return '', status
         else:
@@ -190,6 +190,7 @@ def run():
     ec.process()
     ec.process(u'北京')
     ec.process(u'味疼')
+    ec.process(u'白加黑')
     ec.process('xinzangbing')
     
 if __name__=='__main__':
