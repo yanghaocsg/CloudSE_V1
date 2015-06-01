@@ -17,7 +17,7 @@ from Xywy_Blacklist import Xywy_Blacklist
 
 #self module
 import YhLog, YhTool,  YhMc
-import Info, Indexer, Query
+import Info, Indexer, Query, Segmenter
 from Redis_zero import redis_zero
 
 logger = logging.getLogger(__name__)
@@ -44,8 +44,9 @@ class Searcher(object):
                 list_url, num_url = self.get_cache(query, uni_query, start, num, cache, st)
             else:
                 raise
-
-            dict_res = {'seg': Query.yhTrieSeg.seg(query) , 'res':list_url, 'status':0, 'totalnum':num_url}
+            list_seg = Segmenter.dict_seg[2](query)
+            list_seg.extend(Segmenter.dict_seg[3](query))
+            dict_res = {'seg': list_seg , 'res':list_url, 'status':0, 'totalnum':num_url}
             end = datetime.datetime.now()
             logger.error('query %s list_url %s num_url %s time %s' % (query, len(list_url), num_url, end-before))
             return dict_res
