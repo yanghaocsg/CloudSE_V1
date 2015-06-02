@@ -57,7 +57,7 @@ class ErrorCorrection:
                 set_pinyin = yhpinyin.line2py_fuzzy(query)
                 #logger.error('set_pinyin [%s] [%s]' % (query, '|'.join(set_pinyin)))
                 for s in set_pinyin:
-                    logger.error('s in set_pinyin %s\t%s' % (query, s))
+                    #logger.error('s in set_pinyin %s\t%s' % (query, s))
                     if s in self.dict_ec_pinyin:
                         str_res = self.dict_ec_pinyin[s]
                         break

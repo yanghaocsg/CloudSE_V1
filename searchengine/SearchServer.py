@@ -16,8 +16,11 @@ import ConfigParser
 import YhLog
 import Searcher, Restart
 import Xywy_Handler
-sys.path.append('../queryprocess')
+sys.path.append('/data/CloudSE/QueryProcess')
+sys.path.append('/data/CloudSE/Suggest')
+
 import ErrorCorrection, RelatedSearch
+import SuggestHandler
 logger = logging.getLogger(__file__)
 
 logger.error('global init start [%s]\n====================='%datetime.datetime.now())
@@ -102,7 +105,7 @@ def multi_app():
         (r'/delinfo', Xywy_Handler.Blacklist_Handler),
         (r'/ec', ErrorCorrection.Ec_Handler),
         (r'/rs', RelatedSearch.Rs_Handler),
-        #(r'/sug', SugIndexer.Sug_Handler),
+        (r'/sug', SuggestHandler.SuggestHandler),
         ], **settings)
     http_server = HTTPServer(app)
     http_server.bind(port)
